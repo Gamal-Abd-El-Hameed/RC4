@@ -4,7 +4,7 @@ from utilites import *
 
 def main():
     # Read the key
-    key = "0123456789ABCDEF"  # input("Enter the key: ")
+    key = input("Enter the key: ")
     if len(key) != 16:
         return print("Key must be 16 characters long.")
 
