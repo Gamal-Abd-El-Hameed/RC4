@@ -14,50 +14,51 @@ def write_sound_file(filename, params, data):
         file.writeframes(data)
 
 
-def swap(list, pos1, pos2):
-    list[pos1], list[pos2] = list[pos2], list[pos1]
-    return list
+def swap(x, y):
+    x, y = y, x
 
 
-def modify_S_vector(key, S_vector):
-    T_vector, j = [], 0
-    for i in range(len(S_vector)):
-        appe = key[i % len(key)]
-        T_vector.append(appe)
+def key_scheduling_algorithm(key, state_vector):
+    temp_vector = []
+    j = 0
 
-    for i in range(len(S_vector)):
-        j = (j + S_vector[i] + T_vector[i]) % len(S_vector)
-        swap(S_vector, i, j)
+    for i in range(len(state_vector)):
+        temp_vector.append(key[i % len(key)])
 
-    return S_vector
+    for i in range(len(state_vector)):
+        j = (j + state_vector[i] + temp_vector[i]) % len(state_vector)
+        swap(state_vector[i], state_vector[j])
 
 
-def encrypt(sound_data, S_vector):
-    cipher, i, j = bytearray(), 0, 0
-    S_vector_mod = S_vector.copy()  # Create copy so the main S_vector is not modified
+def pseudo_random_generation_algorithm(sound_data, state_vector, cipher):
+    i, j = 0, 0
+    modified_state_vector = state_vector.copy()
+
     for byte in sound_data:
-        i = (i + 1) % len(S_vector_mod)
-        j = (j + S_vector_mod[i]) % len(S_vector_mod)
-        swap(S_vector_mod, i, j)
-        t = (S_vector_mod[i] + S_vector_mod[j]) % len(S_vector_mod)
-        key_mod = S_vector_mod[t]
-        encrypted_byte = byte ^ key_mod
+        i = (i + 1) % len(modified_state_vector)
+        j = (j + modified_state_vector[i]) % len(modified_state_vector)
+        swap(modified_state_vector[i], modified_state_vector[j])
+        t = (modified_state_vector[i] + modified_state_vector[j]) % len(modified_state_vector)
+        k = modified_state_vector[t]
+        encrypted_byte = byte ^ k
         cipher.append(encrypted_byte)
 
+
+def encrypt(sound_data, key, state_vector):
+    key_scheduling_algorithm(key, state_vector)
+    cipher = bytearray()
+    pseudo_random_generation_algorithm(sound_data, state_vector, cipher)
     return bytes(cipher)
 
 
-def decrypt(cipher, S_vector):
-    return encrypt(cipher, S_vector)  # RC4 encryption and decryption are the same operation
+def decrypt(cipher, key, state_vector):
+    return encrypt(cipher, key, state_vector)  # RC4 encryption and decryption are the same operation
 
 
-# Main function
 def main():
-    # Input the key
     key = "0123456789ABCDEF"  # input("Enter the key: ")
-    if len(key) == 0:
-        print("Key cannot be empty.")
-        return
+    if len(key) != 16:
+        return print("Key must be 16 characters long.")
 
     # Read the sound file
     filename = "input.wav"
@@ -66,12 +67,11 @@ def main():
     # Convert key and sound data to lists of integers
     key = [ord(char) for char in key]
 
-    # Initialize S vector
-    S_vector = list(range(0, 256))
-    S_vector_mod = modify_S_vector(key, S_vector)
+    # Initialize the state vector
+    state_vector = list(range(0, 256))
 
     # Encrypt the sound file
-    encrypted_sound_data = encrypt(sound_data, S_vector_mod)
+    encrypted_sound_data = encrypt(sound_data, key, state_vector)
 
     # Write the encrypted sound file
     encrypted_filename = "encrypted.wav"
@@ -79,7 +79,7 @@ def main():
     print("Encryption completed.")
 
     # Decrypt the encrypted sound file
-    decrypted_sound_data = decrypt(encrypted_sound_data, S_vector_mod)
+    decrypted_sound_data = decrypt(encrypted_sound_data, key, state_vector)
 
     # Write the decrypted sound file
     decrypted_filename = "decrypted.wav"
